@@ -33,3 +33,9 @@ The story used R extensively to create scripts that would fetch the new data, co
 * [R notebook: analysing the data to identify the most deprived local authority](https://github.com/BBC-Data-Unit/deprivation/blob/master/id02_worstla.Rmd)
 * [R notebook: identifying areas which have changed the most on specific metrics](https://github.com/BBC-Data-Unit/deprivation/blob/master/id03_scorechanges.Rmd)
 * [R notebook: analysing how scores have changed in England from 2010-2019](https://github.com/BBC-Data-Unit/deprivation/blob/master/id04_scoresoverall.Rmd)
+
+## Related stories and repos
+
+We have used deprivation data before in the data unit:
+
+* You can [find all stories tagged 'deprivation' here](https://github.com/BBC-Data-Unit?utf8=%E2%9C%93&q=deprivation&type=&language=)
