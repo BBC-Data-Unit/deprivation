@@ -1,0 +1,140 @@
+---
+title: "Indices of deprivation: how has England changed? (detailed scores)"
+author: "Paul Bradshaw"
+date: "23/09/2019"
+output: html_document
+---
+
+# Indices of deprivation: fetching and cleaning
+
+This notebook details the process of fetching and cleaning indices of deprivation (IoD) and analysing score-level data.
+
+The overall IoD ranking is based on a score given to each LSOA. That score is calculated based on a series of other scores, for aspects of deprivation ranging from employment to living environment.
+
+Some of these scores are meaningful and comparable - such as the % of people "involuntarily excluded from the labour market" - while others are less so, such as a nunmber between 4 and -4 to indicate living environment.
+
+The *overall* rankings based on those scores are provided in a main spreadsheet, but the detail of the scores are elsewhere. In 2015 the individual scores were provided in a separate spreadsheet, [File 5: scores for the indices of deprivation](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467768/File_5_ID_2015_Scores_for_the_Indices_of_Deprivation.xlsx). In 2010, each 'domain' (e.g. housing) was published in its own separate spreadsheet.
+
+
+## What we need to do
+
+We need to:
+
+* Fetch the spreadsheet
+* Clean it where needed, e.g. making headings consistent
+* Combine the data
+* Analyse to see which aspects have changed
+* Export the results for visualisation
+
+
+## Fetching data from the URLs
+
+First, we store the URLs for the spreadsheets with individual scores.
+
+```{r store scores URL}
+#CHANGE THIS URL WHEN 2019 IS PUBLISHED
+scoresurl19 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467768/File_5_ID_2015_Scores_for_the_Indices_of_Deprivation.xlsx"
+
+#2015 scores
+scoresurl15 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467768/File_5_ID_2015_Scores_for_the_Indices_of_Deprivation.xlsx"
+#This is just income scores
+incomeurl10 <- "https://www.gov.uk/government/uploads/system/uploads/attachment_data/file/6873/1871528.xls"
+```
+
+Then we import from them:
+
+```{r import data from url}
+#Fetch the second sheet of that spreadsheet, and store
+scores19 <- rio::import(scoresurl19, sheet = 2)
+scores15 <- rio::import(scoresurl15, sheet = 2)
+scores10.income <- rio::import(incomeurl10, sheet = 2)
+```
+
+## Clean the data
+
+Now we rename the columns so that they are consistent
+
+```{r rename la col}
+#Change col 1
+colnames(scores19)[1] <- "lsoacode"
+colnames(scores15)[1] <- "lsoacode"
+colnames(scores10.income)[1] <- "lsoacode"
+
+colnames(scores19)[2] <- "lsoaname"
+colnames(scores15)[2] <- "lsoaname"
+
+colnames(scores19)[3] <- "lacode"
+colnames(scores15)[3] <- "lacode"
+colnames(scores10.income)[2] <- "lacode"
+
+colnames(scores19)[4] <- "laname"
+colnames(scores15)[4] <- "laname"
+colnames(scores10.income)[3] <- "laname"
+
+colnames(scores19)[6] <- "incomescore19"
+colnames(scores15)[6] <- "incomescore15"
+colnames(scores10.income)[6] <- "incomescore10"
+
+colnames(scores19)[5] <- "imdscore19"
+colnames(scores15)[5] <- "imdscore15"
+
+```
+
+
+
+
+## Combining the data 
+
+Now let's combine those:
+
+```{r combine data}
+library(dplyr)
+#We use a right join because the 2015 data has more rows
+scores10to19 <- dplyr::right_join(scores10.income, scores15, by = "lsoacode")
+#Then left join
+scores10to19 <- dplyr::left_join(scores10to19, scores19, by = "lsoacode")
+```
+
+The overall IMD score is in the 2010 *overall* data but the 2015 *scores breakdown* spreadsheet. We need to combine those.
+
+```{r combine imd scores}
+imdscores10to19 <- dplyr::right_join(data10, scores15, by = "lsoacode")
+imdscores10to19 <- dplyr::left_join(imdscores10to19, scores19, by = "lsoacode")
+colnames(imdscores10to19)[6] <- "imdscore10"
+```
+
+
+## Analysis: how has England changed?
+
+```{r install sqldf}
+if(!require("sqldf")){
+  install_formats("sqldf")
+}
+library(sqldf)
+```
+
+Let's see what the average is:
+
+```{r average score 1}
+sqldf::sqldf("SELECT AVG(imdscore10), AVG(imdscore15), AVG(imdscore19) FROM imdscores10to19")
+```
+And the median:
+
+```{r average score}
+sqldf::sqldf("SELECT MEDIAN(imdscore10), MEDIAN(imdscore15), MEDIAN(imdscore19) FROM imdscores10to19")
+```
+
+Very little change there.
+
+How about the other measures?
+
+```{r income change}
+sqldf::sqldf("SELECT MEDIAN(incomescore10), MEDIAN(incomescore15), MEDIAN(incomescore19) FROM scores10to19")
+```
+
+```{r other change}
+sqldf::sqldf("SELECT MEDIAN(employscore15), MEDIAN(employscore19) FROM scores10to19")
+sqldf::sqldf("SELECT MEDIAN(IDACIrate15), MEDIAN(IDACIrate19) FROM scores10to19")
+sqldf::sqldf("SELECT MEDIAN(IDAOPIrate15), MEDIAN(IDAOPIrate19) FROM scores10to19")
+
+```

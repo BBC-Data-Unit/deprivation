@@ -1,0 +1,148 @@
+---
+title: "Indices of deprivation: fetching and cleaning"
+author: "Paul Bradshaw"
+date: "23/09/2019"
+output: html_document
+---
+
+# Indices of deprivation: fetching and cleaning
+
+This notebook details the process of fetching and cleaning indices of deprivation (IoD) for analysis. 
+
+## Background: how the IoD works
+
+The IoD ranks every LSOA (neighbourhood) in England in terms of its *relative* deprivation: that is, whether it is better or worse than other areas. 
+
+It was first released in [2010](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2010), then in [2015](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2015) and now in 2019.
+
+## What we need to do
+
+We need to:
+
+* Fetch the spreadsheet
+* Clean it where needed, e.g. making headings consistent
+* Combine the data
+* Analyse to see which are worst, which changed the most
+* Export the results for visualisation
+
+***CHANGE THE FIRST LINE OF CODE TO THE 2019 DATA URL ONCE IT IS LIVE***
+
+```{r store urls}
+#CHANGE THIS TO THE 2019 URL ONCE LIVE
+dataurl19 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467764/File_1_ID_2015_Index_of_Multiple_Deprivation.xlsx"
+#Store both URLs as strings
+dataurl15 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467764/File_1_ID_2015_Index_of_Multiple_Deprivation.xlsx"
+dataurl10 <- "https://www.gov.uk/government/uploads/system/uploads/attachment_data/file/6872/1871524.xls"
+```
+
+Now to fetch those we need the `rio` library:
+
+```{r install rio}
+#Install rio if needed
+if(!require("rio")){
+  install.packages("rio")
+}
+#Activate rio
+library(rio)
+```
+
+And fetch the URL:
+
+```{r import from urls}
+#Fetch the second sheet of that spreadsheet, and store
+data19 <- rio::import(dataurl19, sheet = 2)
+data15 <- rio::import(dataurl15, sheet = 2)
+data10 <- rio::import(dataurl10, sheet = 2)
+```
+## Cleaning the column names
+
+The datasets differ slightly in terms of columns, but the first column in each has the LSOA name, and we need to make sure we can match on that. So we change the name of that column:
+
+```{r rename col 1}
+colnames(data19)[1] <- "lsoacode"
+colnames(data15)[1] <- "lsoacode"
+colnames(data10)[1] <- "lsoacode"
+#And LSOA names - only in the 2015+ data
+colnames(data19)[2] <- "lsoaname"
+colnames(data15)[2] <- "lsoaname"
+```
+
+We do the same with the local authority name column and imd score
+
+```{r rename la col}
+colnames(data19)[4] <- "laname"
+colnames(data15)[4] <- "laname"
+colnames(data10)[3] <- "laname"
+#IMD ranks
+colnames(data19)[5] <- "rank"
+colnames(data15)[5] <- "rank"
+colnames(data10)[7] <- "rank"
+```
+
+## Combining the data 
+
+Now let's combine those:
+
+```{r combine data}
+library(dplyr)
+#We use a right join because the 2015 data has more rows
+data10to19 <- dplyr::right_join(data10, data15, by = "lsoacode")
+#Then left join
+data10to19 <- dplyr::left_join(data10to19, data19, by = "lsoacode")
+```
+
+
+
+## Analysis: what's the 10 most deprived areas?
+
+```{r install sqldf}
+if(!require("sqldf")){
+  install_formats("sqldf")
+}
+library(sqldf)
+```
+
+```{r 10 lowest ranked}
+#Show the 10 lowest ranked LSOAs
+#Names with . in them need to be in `` to avoid it being parsed as a table name
+top10 <- sqldf::sqldf("SELECT `lsoaname.x`, lsoacode, `rank.x` AS rank10, `rank.y` AS rank15, rank AS rank19, rank - `rank.y` AS change1519 FROM data10to19
+             ORDER BY rank19 ASC
+             LIMIT 10")
+print(top10)
+```
+
+We can repeat this to see those with the biggest changes:
+
+```{r 10 lowest ranked}
+#A rank then of 10, minus a rank.y of 10 = a change of -9, in other words they have 'dropped' from 10th to 1st worst. The lower the number, the bigger the drop, so we order descending:
+biggestrisers <- sqldf::sqldf("SELECT `lsoaname.x`, lsoacode, `rank.x` AS rank10, `rank.y` AS rank15, rank AS rank19, rank - `rank.y` AS change1519 FROM data10to19
+             ORDER BY change1519 DESC
+             LIMIT 10")
+print(biggestrisers)
+```
+
+
+And the biggest changes in the other direction:
+
+```{r 10 lowest ranked}
+# Reverse the order to get biggest fallers
+biggestdrops <- sqldf::sqldf("SELECT `lsoaname.x`, lsoacode, `rank.x` AS rank10, `rank.y` AS rank15, rank AS rank19, rank - `rank.y` AS change1519 FROM data10to19
+             ORDER BY change1519 ASC
+             LIMIT 10")
+print(biggestdrops)
+```
+
+Now export as a spreadsheet:
+
+```{r export csv}
+write.csv(top10, "top10.csv")
+write.csv(biggestdrops,"biggestdrops.csv")
+write.csv(biggestrisers,"biggestrisers.csv")
+```
+
+
+```{r}
+top10 <- dplyr::left_join(top10, scores10to19, by = "lsoacode")
+```
+
+

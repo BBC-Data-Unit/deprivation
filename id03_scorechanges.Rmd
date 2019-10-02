@@ -1,0 +1,258 @@
+---
+title: "Indices of deprivation: fetching and cleaning"
+author: "Paul Bradshaw"
+date: "23/09/2019"
+output: html_document
+---
+
+# Indices of deprivation: fetching and cleaning
+
+This notebook details the process of fetching and cleaning indices of deprivation (IoD) and analysing score-level data.
+
+The overall IoD ranking is based on a score given to each LSOA. That score is calculated based on a series of other scores, for aspects of deprivation ranging from employment to living environment.
+
+Some of these scores are meaningful and comparable - such as the % of people "involuntarily excluded from the labour market" - while others are less so, such as a nunmber between 4 and -4 to indicate living environment.
+
+The *overall* rankings based on those scores are provided in a main spreadsheet, but the detail of the scores are elsewhere. In 2015 the individual scores were provided in a separate spreadsheet, [File 5: scores for the indices of deprivation](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467768/File_5_ID_2015_Scores_for_the_Indices_of_Deprivation.xlsx). In 2010, each 'domain' (e.g. housing) was published in its own separate spreadsheet.
+
+
+## What we need to do
+
+We need to:
+
+* Fetch the spreadsheet
+* Clean it where needed, e.g. making headings consistent
+* Combine the data
+* Analyse to see which aspects have changed
+* Export the results for visualisation
+
+
+## Fetching data from the URLs
+
+First, we store the URLs for the spreadsheets with individual scores.
+
+```{r store scores URL}
+#CHANGE THIS URL WHEN 2019 IS PUBLISHED
+scoresurl19 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467768/File_5_ID_2015_Scores_for_the_Indices_of_Deprivation.xlsx"
+
+#2015 scores
+scoresurl15 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467768/File_5_ID_2015_Scores_for_the_Indices_of_Deprivation.xlsx"
+#This is just income scores
+incomeurl10 <- "https://www.gov.uk/government/uploads/system/uploads/attachment_data/file/6873/1871528.xls"
+```
+
+Then we import from them:
+
+```{r import data from url}
+#Fetch the second sheet of that spreadsheet, and store
+scores19 <- rio::import(scoresurl19, sheet = 2)
+scores15 <- rio::import(scoresurl15, sheet = 2)
+scores10.income <- rio::import(incomeurl10, sheet = 2)
+```
+
+## Clean the data
+
+Now we rename the columns so that they are consistent
+
+```{r rename la col}
+#Change col 1
+colnames(scores19)[1] <- "lsoacode"
+colnames(scores15)[1] <- "lsoacode"
+colnames(scores10.income)[1] <- "lsoacode"
+
+colnames(scores19)[2] <- "lsoaname"
+colnames(scores15)[2] <- "lsoaname"
+
+colnames(scores19)[3] <- "lacode"
+colnames(scores15)[3] <- "lacode"
+colnames(scores10.income)[2] <- "lacode"
+
+colnames(scores19)[4] <- "laname"
+colnames(scores15)[4] <- "laname"
+colnames(scores10.income)[3] <- "laname"
+```
+
+We also need to name columns so the year is obvious:
+
+```{r more renaming}
+colnames(scores19)[6] <- "incomescore19"
+colnames(scores15)[6] <- "incomescore15"
+colnames(scores10.income)[6] <- "incomescore10"
+
+colnames(scores19)[7] <- "employscore19"
+colnames(scores15)[7] <- "employscore15"
+
+colnames(scores19)[13] <- "IDACIrate19"
+colnames(scores15)[13] <- "IDACIrate15"
+colnames(scores19)[14] <- "IDAOPIrate19"
+colnames(scores15)[14] <- "IDAOPIrate15"
+
+```
+
+
+
+## Combining the data 
+
+Now let's combine those:
+
+```{r combine data}
+library(dplyr)
+#We use a right join because the 2015 data has more rows
+scores10to19 <- dplyr::right_join(scores10.income, scores15, by = "lsoacode")
+#Then left join
+scores10to19 <- dplyr::left_join(scores10to19, scores19, by = "lsoacode")
+```
+
+
+## Analysis: what are the 10 LSOAs with the worst income rate?
+
+```{r install sqldf}
+if(!require("sqldf")){
+  install_formats("sqldf")
+}
+library(sqldf)
+```
+
+Show the 10 LSOAs with the highest income rates:
+
+```{r 10 lowest ranked}
+#Show the 10 lowest ranked LAs
+#Names with . in them need to be in `` to avoid it being parsed as a table name
+incometop10 <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`, incomescore10, incomescore15, incomescore19 FROM scores10to19
+             ORDER BY incomescore19 DESC
+             LIMIT 10")
+print(incometop10)
+```
+
+Show the LSOAs where that rate has changed the most:
+
+```{r 10 biggest drops}
+
+incomedrops <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`,  incomescore10, incomescore15, incomescore19, `incomescore19` - `incomescore15` AS change15to19 FROM scores10to19
+             ORDER BY change15to19 DESC
+             LIMIT 10")
+print(incomedrops)
+```
+
+```{r 10 biggest drops 2}
+#We add a WHERE filter to remove NA entries for 2010
+incomerises <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`,  incomescore10, incomescore15, incomescore19, `incomescore19` - `incomescore15` AS change15to19 FROM scores10to19
+WHERE `incomescore10` != 'NA'
+             ORDER BY change15to19 ASC
+             LIMIT 10")
+print(incomerises)
+```
+
+
+## Analysis: what are the 10 LSOAs with the worst employment rate?
+
+
+
+```{r 10 lowest ranked}
+#Show the 10 lowest ranked LAs
+#Names with . in them need to be in `` to avoid it being parsed as a table name
+emptop10 <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`, employscore15, employscore19 FROM scores10to19
+             ORDER BY employscore19 DESC
+             LIMIT 10")
+print(emptop10)
+```
+
+Show the LSOAs where that rate has changed the most:
+
+```{r 10 biggest drops}
+
+empdrops <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`, employscore15, employscore19, `employscore19` - `employscore15` AS change15to19 FROM scores10to19
+             ORDER BY change15to19 DESC
+             LIMIT 10")
+print(empdrops)
+```
+
+```{r 10 biggest drops}
+emprises <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`, employscore15, employscore19, `employscore19` - `employscore15` AS change15to19 FROM scores10to19
+             ORDER BY change15to19 ASC
+             LIMIT 10")
+print(emprises)
+```
+
+## Analysis: what are the 10 LSOAs with the worst Income Deprivation Affecting Children Index (IDACI) and Income Deprivation Affecting Older People (IDAOPI) rates?
+
+
+```{r 10 lowest ranked}
+#Show the 10 lowest ranked LAs
+#Names with . in them need to be in `` to avoid it being parsed as a table name
+idacitop10 <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`, IDACIrate15, IDACIrate19 FROM scores10to19
+             ORDER BY employscore19 DESC
+             LIMIT 10")
+print(idacitop10)
+```
+
+Show the LSOAs where that rate has changed the most:
+
+```{r 10 biggest drops}
+
+idacidrops <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`, IDACIrate15, IDACIrate19, `IDACIrate19` - `IDACIrate15` AS change15to19 FROM scores10to19
+             ORDER BY change15to19 DESC
+             LIMIT 10")
+print(idacidrops)
+```
+
+```{r 10 biggest drops}
+idacirises <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`, IDACIrate15, IDACIrate19, `IDACIrate19` - `IDACIrate15` AS change15to19 FROM scores10to19
+             ORDER BY change15to19 ASC
+             LIMIT 10")
+print(idacirises)
+```
+
+### IDAOPI 
+
+```{r 10 lowest ranked}
+#Show the 10 lowest ranked LAs
+#Names with . in them need to be in `` to avoid it being parsed as a table name
+idaopitop10 <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`, IDAOPIrate15, IDAOPIrate19 FROM scores10to19
+             ORDER BY employscore19 DESC
+             LIMIT 10")
+print(idaopitop10)
+```
+
+Show the LSOAs where that rate has changed the most:
+
+```{r 10 biggest drops}
+
+idaopidrops <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`, IDAOPIrate15, IDAOPIrate19, `IDAOPIrate19` - `IDAOPIrate15` AS change15to19 FROM scores10to19
+             ORDER BY change15to19 DESC
+             LIMIT 10")
+print(idaopidrops)
+```
+
+```{r 10 biggest drops}
+idaopirises <- sqldf::sqldf("SELECT lsoacode, `lsoaname.x`, IDAOPIrate15, IDAOPIrate19, `IDAOPIrate19` - `IDAOPIrate15` AS change15to19 FROM scores10to19
+             ORDER BY change15to19 ASC
+             LIMIT 10")
+print(idaopirises)
+```
+
+## Export the results
+
+Now export as a spreadsheet:
+
+```{r export csv}
+write.csv(incometop10, "incometop10.csv")
+write.csv(incomedrops,"incomedrops.csv")
+write.csv(incomerises,"incomerises.csv")
+
+write.csv(emptop10, "emptop10.csv")
+write.csv(empdrops,"empdrops.csv")
+write.csv(emprises,"emprises.csv")
+
+write.csv(idacitop10, "idacitop10.csv")
+write.csv(idacidrops, "idacidrops.csv")
+write.csv(idacirises, "idacirises.csv")
+
+write.csv(idaopitop10, "idaopitop10.csv")
+write.csv(idaopidrops, "idaopidrops.csv")
+write.csv(idaopirises, "idaopirises.csv")
+
+```
+
+
+
