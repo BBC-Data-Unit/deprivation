@@ -32,9 +32,8 @@ We need to:
 First, we store the URLs for the spreadsheets with individual scores.
 
 ```{r store scores URL}
-#CHANGE THIS URL WHEN 2019 IS PUBLISHED
-scoresurl19 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467768/File_5_ID_2015_Scores_for_the_Indices_of_Deprivation.xlsx"
-
+#CHANGED WHEN 2019 IS PUBLISHED
+scoresurl19 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/833978/File_5_-_IoD2019_Scores.xlsx"
 #2015 scores
 scoresurl15 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467768/File_5_ID_2015_Scores_for_the_Indices_of_Deprivation.xlsx"
 #This is just income scores
@@ -71,13 +70,21 @@ colnames(scores19)[4] <- "laname"
 colnames(scores15)[4] <- "laname"
 colnames(scores10.income)[3] <- "laname"
 
+colnames(scores19)[5] <- "imdscore19"
+colnames(scores15)[5] <- "imdscore15"
+
 colnames(scores19)[6] <- "incomescore19"
 colnames(scores15)[6] <- "incomescore15"
 colnames(scores10.income)[6] <- "incomescore10"
 
-colnames(scores19)[5] <- "imdscore19"
-colnames(scores15)[5] <- "imdscore15"
+colnames(scores19)[7] <- "employscore19"
+colnames(scores15)[7] <- "employscore15"
 
+colnames(scores19)[13] <- "IDACIrate19"
+colnames(scores15)[13] <- "IDACIrate15"
+
+colnames(scores19)[14] <- "IDAOPIrate19"
+colnames(scores15)[14] <- "IDAOPIrate15"
 ```
 
 
@@ -131,6 +138,8 @@ How about the other measures?
 ```{r income change}
 sqldf::sqldf("SELECT MEDIAN(incomescore10), MEDIAN(incomescore15), MEDIAN(incomescore19) FROM scores10to19")
 ```
+
+
 
 ```{r other change}
 sqldf::sqldf("SELECT MEDIAN(employscore15), MEDIAN(employscore19) FROM scores10to19")

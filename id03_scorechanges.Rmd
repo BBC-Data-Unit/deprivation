@@ -32,9 +32,8 @@ We need to:
 First, we store the URLs for the spreadsheets with individual scores.
 
 ```{r store scores URL}
-#CHANGE THIS URL WHEN 2019 IS PUBLISHED
-scoresurl19 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467768/File_5_ID_2015_Scores_for_the_Indices_of_Deprivation.xlsx"
-
+#CHANGED WHEN 2019 IS PUBLISHED
+scoresurl19 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/833978/File_5_-_IoD2019_Scores.xlsx"
 #2015 scores
 scoresurl15 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467768/File_5_ID_2015_Scores_for_the_Indices_of_Deprivation.xlsx"
 #This is just income scores

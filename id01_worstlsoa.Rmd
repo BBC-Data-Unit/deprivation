@@ -13,7 +13,7 @@ This notebook details the process of fetching and cleaning indices of deprivatio
 
 The IoD ranks every LSOA (neighbourhood) in England in terms of its *relative* deprivation: that is, whether it is better or worse than other areas. 
 
-It was first released in [2010](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2010), then in [2015](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2015) and now in 2019.
+It was first released in [2010](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2010), then in [2015](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2015) and [now in 2019](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019.
 
 ## What we need to do
 
@@ -25,11 +25,9 @@ We need to:
 * Analyse to see which are worst, which changed the most
 * Export the results for visualisation
 
-***CHANGE THE FIRST LINE OF CODE TO THE 2019 DATA URL ONCE IT IS LIVE***
-
 ```{r store urls}
-#CHANGE THIS TO THE 2019 URL ONCE LIVE
-dataurl19 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467764/File_1_ID_2015_Index_of_Multiple_Deprivation.xlsx"
+#THIS WAS CHANGED TO THE 2019 URL ONCE LIVE
+dataurl19 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/833970/File_1_-_IMD2019_Index_of_Multiple_Deprivation.xlsx"
 #Store both URLs as strings
 dataurl15 <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/467764/File_1_ID_2015_Index_of_Multiple_Deprivation.xlsx"
 dataurl10 <- "https://www.gov.uk/government/uploads/system/uploads/attachment_data/file/6872/1871524.xls"
@@ -140,9 +138,5 @@ write.csv(biggestdrops,"biggestdrops.csv")
 write.csv(biggestrisers,"biggestrisers.csv")
 ```
 
-
-```{r}
-top10 <- dplyr::left_join(top10, scores10to19, by = "lsoacode")
-```
 
 
