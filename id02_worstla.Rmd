@@ -25,7 +25,7 @@ We need to:
 #THIS WAS CHANGED TO THE 2019 URL ONCE LIVE
 dataurl19.la <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/833995/File_10_-_IoD2019_Local_Authority_District_Summaries__lower-tier__.xlsx"
 #Store both URLs as strings
-dataurl15.la <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/464465/File_11_ID_2015_Upper-tier_Local_Authority_Summaries.xlsx"
+dataurl15.la <- "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/464464/File_10_ID2015_Local_Authority_District_Summaries.xlsx"
 dataurl10.la <- "https://www.gov.uk/government/uploads/system/uploads/attachment_data/file/6884/1871689.xls"
 ```
 
